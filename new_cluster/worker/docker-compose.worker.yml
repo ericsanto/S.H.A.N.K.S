@@ -3,10 +3,10 @@ services:
     build: 
       context: ..
       dockerfile: worker/Dockerfile.worker
-    container_name: worker
+    container_name: datanode_5
     env_file: ../../.env
     network_mode: "host"
-    hostname: datanode_1
+    hostname: datanode_5
     volumes:
       - datanode_data:/home/hadoop/hadoop/hdfs/datanode
   node-exporter-worker:
