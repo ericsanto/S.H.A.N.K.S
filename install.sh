@@ -8,7 +8,7 @@ groupadd $GROUP_NAME
 
 usermod -a -G $GROUP_NAME $SUDO_USER
 
-curl  https://raw.githubusercontent.com/ericsanto/S.H.A.N.K.S/feat/installApp/config-shanks-hosts.sh  -o config-hosts-shanks.sh && \
+curl  https://raw.githubusercontent.com/ericsanto/S.H.A.N.K.S/staging/config-shanks-hosts.sh  -o config-hosts-shanks.sh && \
 chmod +x config-hosts-shanks.sh && \
 mv config-hosts-shanks.sh $bin_directory
 
@@ -34,9 +34,7 @@ printf '%s\n' \
 chmod 0440 "$SUDOERS_TEMP"
 
 if visudo -cf "$SUDOERS_TEMP"; then
-    install -o root -g root -m 0440 \   
-        "$SUDOERS_TEMP" \
-        /etc/sudoers.d/shanks
+    install -o root -g root -m 0440 "$SUDOERS_TEMP" /etc/sudoers.d/shanks
 else
     echo "Erro: regra sudoers inválida."
     rm -f "$SUDOERS_TEMP"
