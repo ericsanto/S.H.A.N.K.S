@@ -1,5 +1,8 @@
 #!/bin/bash
 
+
+apt update && apt upgrade -y    
+
 bin_directory="/usr/local/bin"
 
 GROUP_NAME="shanks"
@@ -61,7 +64,7 @@ EOF
 
 apt update
 
-apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 
 groupadd docker
 usermod -aG docker $USER
