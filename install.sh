@@ -59,12 +59,15 @@ Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
 
+apt update
+
 apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-apt update
 groupadd docker
 usermod -aG docker $USER
 newgrp docker
 
-git clone https://github.com/ericsanto/S.H.A.N.K.S.git
+systemctl start docker
+
+sudo -u $SUDO_USER git clone https://github.com/ericsanto/S.H.A.N.K.S.git
 
