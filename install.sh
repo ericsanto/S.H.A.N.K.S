@@ -59,6 +59,8 @@ Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
 
+apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
 apt update
 groupadd docker
 usermod -aG docker $USER
