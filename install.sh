@@ -1,15 +1,26 @@
 #!/bin/bash
 
 
+source docker-configure.sh
+source zerotier-configure.sh
+
+
 apt update && apt upgrade -y    
 
 bin_directory="/usr/local/bin"
 
 GROUP_NAME="shanks"
 
-groupadd $GROUP_NAME
+if getent group $GROUP_NAME > /dev/null 2>&1 ; then
+    echo "Grupo shanks já existe"
+else
+    echo "Criando gupo $GROUP_NAME"
 
-usermod -a -G $GROUP_NAME $SUDO_USER
+    groupadd $GROUP_NAME
+    usermod -a -G $GROUP_NAME $SUDO_USER
+
+    echo "Grupo $GROUP_NAME" criado com sucesso
+fi
 
 curl  https://raw.githubusercontent.com/ericsanto/S.H.A.N.K.S/staging/config-shanks-hosts.sh  -o config-hosts-shanks.sh && \
 chmod +x config-hosts-shanks.sh && \
@@ -17,16 +28,8 @@ mv config-hosts-shanks.sh $bin_directory
 
 chown -R root:root /usr/local/bin/config-hosts-shanks.sh
 
-
 ### DOWNLAOD ZEROTIER ###
-curl -s 'https://raw.githubusercontent.com/zerotier/ZeroTierOne/main/doc/contact%40zerotier.com.gpg' | gpg --import && \
-if z=$(curl -s 'https://install.zerotier.com/' | gpg); then echo "$z" | sudo bash; fi
-
-
-systemctl start zerotier-one
-
-
-### LEMBRAR DE ADICIONAR O SHANKS NO SUDOERS ###
+install_zerotier
 
 SUDOERS_TEMP=$(mktemp)
 
@@ -46,31 +49,4 @@ fi
 
 rm -f "$SUDOERS_TEMP"
 
-
-apt update
-apt install ca-certificates curl
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
-
-tee /etc/apt/sources.list.d/docker.sources <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
-Components: stable
-Architectures: $(dpkg --print-architecture)
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
-
-apt update
-
-apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-
-groupadd docker
-usermod -aG docker $USER
-newgrp docker
-
-systemctl start docker
-
-sudo -u $SUDO_USER git clone https://github.com/ericsanto/S.H.A.N.K.S.git
-
+install_docker_based_arch
