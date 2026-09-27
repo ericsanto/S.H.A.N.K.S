@@ -30,6 +30,7 @@ services:
       - grafana:/var/lib/grafana
       - ../grafana/provisioning:/etc/grafana/provisioning
       - ../grafana/files:/var/lib/grafana/files
+      - ../grafana/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - prometheus
     network_mode: "host"
