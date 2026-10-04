@@ -88,7 +88,7 @@ volumes:
 			dockerComposeFile = fmt.Sprintf(`
 services:
   worker:
-    build: 
+    build:
       context: ..
       dockerfile: worker/Dockerfile.worker
     container_name: &DATANODE_NAME %s
@@ -119,7 +119,7 @@ volumes:
 			dockerComposeFile = fmt.Sprintf(`
 services:
   worker:
-    build: 
+    build:
       context: ..
       dockerfile: worker/Dockerfile.worker
     container_name: &DATANODE_NAME %s
