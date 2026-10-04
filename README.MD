@@ -113,14 +113,22 @@ Autorize os membros no painel ZeroTier. O ZeroTier é opcional quando já existe
 
 ### 2. Instalador em todos os nós
 
-Em uma instalação nova, no home do usuário que administrará o nó:
+O `install.sh` carrega `docker-configure.sh` e `zerotier-configure.sh` do
+repositório. Portanto, clone o projeto antes de executar o instalador. Em cada
+máquina, use:
 
 ```bash
+sudo apt-get update
+sudo apt-get install -y git
+
 cd "$HOME"
-curl -fsSLO https://raw.githubusercontent.com/ericsanto/S.H.A.N.K.S/staging/install.sh
-chmod +x install.sh
+git clone --branch staging --single-branch https://github.com/ericsanto/S.H.A.N.K.S.git
+cd S.H.A.N.K.S
 sudo ./install.sh
 ```
+
+Execute `install.sh` a partir da raiz do repositório, como no comando acima,
+para que os arquivos carregados por `source` sejam encontrados.
 
 O script:
 
@@ -131,9 +139,9 @@ O script:
 - instala/inicia ZeroTier;
 - instala Docker Engine, Buildx e Compose;
 - inclui o usuário no grupo `docker`;
-- clona o projeto em `~/S.H.A.N.K.S`.
+- utiliza o projeto previamente clonado em `~/S.H.A.N.K.S`.
 
-> O script altera pacotes, grupos, sudoers e serviços. Revise [install.sh](install.sh). Ele espera que `~/S.H.A.N.K.S` ainda não exista.
+> O script altera pacotes, grupos, sudoers e serviços. Revise [install.sh](install.sh) antes de executá-lo.
 
 Saia e entre novamente na sessão para aplicar os grupos, então valide:
 

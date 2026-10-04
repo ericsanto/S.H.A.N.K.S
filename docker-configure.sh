@@ -15,6 +15,7 @@ install_docker_based_arch() {
     echo 'Docker não existe'
 
     arch=$(dpkg --print-architecture)
+    codename="${UBUNTU_CODENAME:-$VERSION_CODENAME}"
 
     case "$ID" in
         ubuntu)
@@ -46,8 +47,8 @@ install_docker_based_arch() {
 
     cat >/etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
-URIs: https://download.docker.com/linux/
-Suites: ${VERSION_CODENAME}
+URIs: https://download.docker.com/linux/${docker_repo}
+Suites: ${codename}
 Components: stable
 Architectures: ${arch}
 Signed-By: /etc/apt/keyrings/docker.asc
@@ -56,9 +57,15 @@ EOF
     apt-get update
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-    groupadd docker
-    usermod -aG docker "$USER"
-    newgrp docker
+    groupadd -f docker
+
+    docker_user="${SUDO_USER:-$USER}"
+    if id "$docker_user" >/dev/null 2>&1; then
+        usermod -aG docker "$docker_user"
+    else
+        echo "Usuário não encontrado para adicionar ao grupo docker: $docker_user"
+        return 1
+    fi
 
 }
 
