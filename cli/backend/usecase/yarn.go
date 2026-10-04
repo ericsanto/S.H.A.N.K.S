@@ -43,12 +43,11 @@ func ConfigureYarnLimits(configCluster models.Config) error {
 	configCluster.Cluster.Namenode.YarnLimit = *validatedYarnMaster
 	configCluster.Cluster.Namenode.YarnLimitCPUVcores = *validatedYarnCPU
 
-	var yarnWorkers []models.Datanode
+	var yarnWorkers []*models.Datanode
 
 	fmt.Println(len((configCluster.Cluster.Datanodes)))
 
 	if len(configCluster.Cluster.Datanodes) > 0 {
-		yarnWorkers = make([]models.Datanode, len(configCluster.Cluster.Datanodes)-1)
 		for _, datanode := range configCluster.Cluster.Datanodes {
 
 			if err := validateYarnGPU(datanode, pathPrivateKey); err != nil {
@@ -149,7 +148,7 @@ func validateYarnLimits(ip, user, pathPrivateKey string, yarnLimit float64, conf
 
 }
 
-func insertYarnLimitsToEnvFile(namenode models.Namenode, datanodes []models.Datanode) error {
+func insertYarnLimitsToEnvFile(namenode models.Namenode, datanodes []*models.Datanode) error {
 
 	var stringBuffer strings.Builder
 
@@ -267,7 +266,7 @@ func validateYarnLimitCPUVcores(ip, user, pathPrivateKey string, cpu int, config
 
 }
 
-func validateYarnGPU(datanode models.Datanode, pathPrivateKey string) error {
+func validateYarnGPU(datanode *models.Datanode, pathPrivateKey string) error {
 
 	if datanode.GPU {
 

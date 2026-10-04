@@ -144,7 +144,7 @@ func StartCluster(configCluster models.Config) error {
 
 		wg.Add(1)
 		go verifyImageBuildInDatanode(
-			datanode,
+			*datanode,
 			errors,
 			imageVerified,
 			privatePathSSHKey,
@@ -154,7 +154,7 @@ func StartCluster(configCluster models.Config) error {
 
 		wg.Add(1)
 		go imageBuildDatanode(
-			datanode,
+			*datanode,
 			imageVerified,
 			privatePathSSHKey,
 			commandDockerBuildWorkers,
@@ -168,7 +168,7 @@ func StartCluster(configCluster models.Config) error {
 			imageReady,
 			errors,
 			&wg,
-			datanode,
+			*datanode,
 			privatePathSSHKey,
 			commandWorkers,
 		)
