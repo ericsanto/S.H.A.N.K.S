@@ -1,15 +1,31 @@
 FROM hadoop-base
 
+ARG SPARK_VERSION=3.5.3
+ARG SPARK_SHA512=3b041e538282c15ad3b0ab2f05d558e1be2d16e047c2a98ca9c08176c4a50e7101bd2199aec97a66fdabf4b3f490c2c1cefd547bbe35a1b3e3143e066948ee6d
+
+ENV SPARK_HOME=/home/hadoop/spark
+ENV PATH=${SPARK_HOME}/bin:${SPARK_HOME}/sbin:${PATH}
+ENV PYSPARK_PYTHON=python3
+
 COPY /scripts /usr/local/bin
 COPY workers.txt .
 COPY jmx /opt/jmx
 
 USER root
 
-RUN chmod +x /usr/local/bin/worker-entrypoint.sh && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 && \
+    rm -rf /var/lib/apt/lists/* && \
+    chmod +x /usr/local/bin/worker-entrypoint.sh && \
     mkdir -p /home/hadoop/hadoop/hdfs/datanode && \
     chown -R hadoop:hadoop /home/hadoop/hadoop/hdfs
 
 USER hadoop
+
+RUN wget -q "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz" && \
+    echo "${SPARK_SHA512}  spark-${SPARK_VERSION}-bin-hadoop3.tgz" | sha512sum -c - && \
+    tar -xzf "spark-${SPARK_VERSION}-bin-hadoop3.tgz" && \
+    mv "spark-${SPARK_VERSION}-bin-hadoop3" "${SPARK_HOME}" && \
+    rm "spark-${SPARK_VERSION}-bin-hadoop3.tgz"
 
 ENTRYPOINT ["/usr/local/bin/worker-entrypoint.sh"]

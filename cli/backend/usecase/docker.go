@@ -8,9 +8,6 @@ import (
 )
 
 func CreateDockerfile(config models.Cluster) error {
-
-	var dockerComposeFile string
-
 	dockerComposeFileMaster := fmt.Sprintf(`
 services:
   master:
@@ -82,8 +79,19 @@ volumes:
 		return err
 	}
 
-	for _, datanode := range config.Datanodes {
+	privateKeyPath, err := getPathPrivateKey()
+	if err != nil {
+		return fmt.Errorf("não foi possível localizar a chave SSH: %w", err)
+	}
 
+	const createWorkerComposeCommand = `mkdir -p "$HOME/S.H.A.N.K.S/new_cluster/worker" && cat > "$HOME/S.H.A.N.K.S/new_cluster/worker/docker-compose.worker.yml"`
+
+	for _, datanode := range config.Datanodes {
+		if datanode == nil {
+			return fmt.Errorf("datanode inválido na configuração")
+		}
+
+		var dockerComposeFile string
 		if datanode.GPU {
 			dockerComposeFile = fmt.Sprintf(`
 services:
@@ -97,6 +105,7 @@ services:
     hostname: *DATANODE_NAME
     environment:
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      SPARK_WORKER_MEMORY: "%s"
     deploy:
       resources:
         reservations:
@@ -106,6 +115,7 @@ services:
               capabilities: [gpu]
     volumes:
       - datanode_data:/home/hadoop/hadoop/hdfs/datanode
+
   node-exporter-worker:
     image: prom/node-exporter
     network_mode: service:worker
@@ -113,7 +123,7 @@ services:
 
 volumes:
   datanode_data:
-`, datanode.Name)
+`, datanode.Name, datanode.SparkLimit)
 
 		} else {
 			dockerComposeFile = fmt.Sprintf(`
@@ -126,8 +136,11 @@ services:
     env_file: ../../.env
     network_mode: "host"
     hostname: *DATANODE_NAME
+    environment:
+      SPARK_WORKER_MEMORY: "%s"
     volumes:
       - datanode_data:/home/hadoop/hadoop/hdfs/datanode
+
   node-exporter-worker:
     image: prom/node-exporter
     network_mode: service:worker
@@ -135,12 +148,20 @@ services:
 
 volumes:
   datanode_data:
-`, config.Namenode.Name)
+`, datanode.Name, datanode.SparkLimit)
+		}
+
+		if _, err := runSSHCommandBuffer(
+			datanode.IP,
+			"22",
+			datanode.User,
+			privateKeyPath,
+			createWorkerComposeCommand,
+			dockerComposeFile,
+		); err != nil {
+			return fmt.Errorf("não foi possível criar o docker-compose.worker.yml no datanode %s: %w", datanode.Name, err)
 		}
 	}
 
-	if err := os.WriteFile("new_cluster/worker/docker-compose.worker.bak.yml", []byte(dockerComposeFile), 0644); err != nil {
-		return err
-	}
 	return nil
 }
