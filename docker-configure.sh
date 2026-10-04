@@ -53,11 +53,10 @@ EOF
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
     groupadd docker
-    usermod -aG docker "$USER"
+    usermod -aG docker "$SUDO_USER"
     newgrp docker
 
 }
-
 
 
 
