@@ -1,14 +1,92 @@
 cluster: 
   namenode:
-    user: "eric-santos"
+    user: "eric"
     name: "master"
-    ip: "10.144.17.173"
-    yarn_limit: "0.3"
+    ip: "10.124.34.217"
+    yarn_limit: "1.5"
     
 
   datanodes:
     - user: "eric-santos"
-      name: "master"
-      ip: "10.144.17.173"
-      yarn_limit: "0.3"
+      name: "datanode1"
+      ip: "10.124.34.158"
+      yarn_limit: "1.5"
+    - user: "ericsantos"
+      name: "datanode2"
+      ip: "10.124.34.110"
+      yarn_limit: "1.5"
+    - user: "ubuntu"
+      name: "datanode3"
+      ip: "10.124.34.56" #LONDRES
+      yarn_limit: "1.5"
+    - user: "ubuntu"
+      name: "datanode4"
+      ip: "10.124.34.177" #SYDNEY
+      yarn_limit: "1.5"
+    - user: "ubuntu"
+      name: "datanode5"
+      ip: "10.124.34.33" #TOQUIO
+      yarn_limit: "1.5"
+    - user: "ubuntu"
+      name: "datanode6"
+      ip: "10.124.34.185" #EUA
+      yarn_limit: "1.5"
+    - user: "ubuntu"
+      name: "datanode7" #MUMBAI
+      ip: "10.124.34.80" 
+      yarn_limit: "1.5"
+    - user: "ubuntu"
+      name: "datanode8"
+      ip: "10.124.34.112" #CANADA
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode9" #slave2
+      ip: "10.124.34.87"
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode10" #slave1
+      ip: "10.124.34.192"
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode11" #slave6
+      ip: "10.124.34.102" 
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode12" #slave7
+      ip: "10.124.34.97"
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode13"
+      ip: "10.124.34.83" #slave9
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode14" #slave4
+      ip: "10.124.34.251"
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode15" #slave10
+      ip: "10.124.34.31"
+      yarn_limit: "1.5"
+    - user: "bomba"
+      name: "datanode19"
+      ip: "10.124.34.94"
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode17" #slave5
+      ip: "10.124.34.75"
+      yarn_limit: "1.5"
+    - user: "cluster"
+      name: "datanode18" #slave3
+      ip: "10.124.34.140"
+      yarn_limit: "1.5"
+    
+    
 
+
+
+
+
+
+
+
+#sudo zerotier-cli join 8d1c312afabcbf08
