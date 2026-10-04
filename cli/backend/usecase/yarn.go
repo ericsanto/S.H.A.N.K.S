@@ -13,6 +13,7 @@ import (
 func ConfigureYarnLimits(configCluster models.Config) error {
 
 	yarnMaster, err := configCluster.Cluster.Namenode.ConvertToYarnLimit()
+	yarnMasterCPU, err := configCluster.Cluster.Namenode.ConvertCPULimit()
 
 	if err != nil {
 		return fmt.Errorf("erro ao converter o limite de memória do Yarn do Namenode: %v", err)
@@ -32,28 +33,59 @@ func ConfigureYarnLimits(configCluster models.Config) error {
 		return err
 	}
 
+	validatedYarnCPU, err := validateYarnLimitCPUVcores(configCluster.Cluster.Namenode.IP, configCluster.Cluster.Namenode.User, pathPrivateKey, *yarnMasterCPU, "namenode")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("ValidatedYarnCPU: ", *validatedYarnCPU)
+
 	configCluster.Cluster.Namenode.YarnLimit = *validatedYarnMaster
+	configCluster.Cluster.Namenode.YarnLimitCPUVcores = *validatedYarnCPU
 
-	yarnWorkers := make([]models.Datanode, len(configCluster.Cluster.Datanodes)-1)
+	var yarnWorkers []models.Datanode
 
-	for _, datanode := range configCluster.Cluster.Datanodes {
+	fmt.Println(len((configCluster.Cluster.Datanodes)))
 
-		yarnLimit, err := datanode.ConvertToYarnLimit()
-		if err != nil {
-			return fmt.Errorf("erro ao converter o limite de memória do Yarn do Datanode %s: %v", datanode.Name, err)
+	if len(configCluster.Cluster.Datanodes) > 0 {
+		yarnWorkers = make([]models.Datanode, len(configCluster.Cluster.Datanodes)-1)
+		for _, datanode := range configCluster.Cluster.Datanodes {
+
+			if err := validateYarnGPU(datanode, pathPrivateKey); err != nil {
+				return err
+			}
+
+			yarnLimit, err := datanode.ConvertToYarnLimit()
+			if err != nil {
+				return fmt.Errorf("erro ao converter o limite de memória do Yarn do Datanode %s: %v", datanode.Name, err)
+			}
+
+			yarnCPU, err := datanode.ConvertCPULimit()
+
+			if err != nil {
+				return err
+			}
+
+			if err := datanode.VerifiyValueMinYarnRequirements(); err != nil {
+				return err
+			}
+
+			validatedYarnLimit, err := validateYarnLimits(datanode.IP, datanode.User, pathPrivateKey, yarnLimit, "datanode")
+			if err != nil {
+				return err
+			}
+
+			validatedYarnCPU, err := validateYarnLimitCPUVcores(datanode.IP, datanode.User, pathPrivateKey, *yarnCPU, "datanode")
+
+			if err != nil {
+				return err
+			}
+
+			datanode.YarnLimit = *validatedYarnLimit
+			datanode.YarnLimitCPUVcores = *validatedYarnCPU
+			yarnWorkers = append(yarnWorkers, datanode)
 		}
 
-		if err := datanode.VerifiyValueMinYarnRequirements(); err != nil {
-			return err
-		}
-
-		validatedYarnLimit, err := validateYarnLimits(datanode.IP, datanode.User, pathPrivateKey, yarnLimit, "datanode")
-		if err != nil {
-			return err
-		}
-
-		datanode.YarnLimit = *validatedYarnLimit
-		yarnWorkers = append(yarnWorkers, datanode)
 	}
 
 	if err := insertYarnLimitsToEnvFile(configCluster.Cluster.Namenode, yarnWorkers); err != nil {
@@ -128,9 +160,15 @@ func insertYarnLimitsToEnvFile(namenode models.Namenode, datanodes []models.Data
 	defer file.Close()
 
 	stringBuffer.WriteString(fmt.Sprintf("master_YARN_LIMIT=%s\n", namenode.YarnLimit))
+	stringBuffer.WriteString(fmt.Sprintf("master_YARN_LIMIT_CPU=%s\n", namenode.YarnLimitCPUVcores))
 
 	for i, datanode := range datanodes {
 		stringBuffer.WriteString(fmt.Sprintf("datanode_%d_YARN_LIMIT=%s\n", i+1, datanode.YarnLimit))
+		stringBuffer.WriteString(fmt.Sprintf("datanode_%d_YARN_LIMIT_CPU=%s\n", i+1, datanode.YarnLimitCPUVcores))
+
+		if datanode.GPU {
+			stringBuffer.WriteString(fmt.Sprintf("datanode_%d_GPU=%t\n", i+1, datanode.GPU))
+		}
 
 	}
 
@@ -172,4 +210,82 @@ func insertYarnLimitsToEnvFile(namenode models.Namenode, datanodes []models.Data
 	}
 
 	return nil
+}
+
+func validateYarnLimitCPUVcores(ip, user, pathPrivateKey string, cpu int, config string) (*string, error) {
+
+	if config == "namenode" {
+		result, err := exec.Command("bash", "-c", "nproc").Output()
+
+		if err != nil {
+			return nil, err
+		}
+
+		cpuF := strings.Replace(string(result), "\n", "", 1)
+
+		quantitityCPUMachine, err := strconv.Atoi(string(cpuF))
+
+		if err != nil {
+			return nil, err
+		}
+
+		if cpu > quantitityCPUMachine {
+			logInfo("Quantidade de Cpu alocada é maior que a quantidade suportada pela máquina física ", config)
+			cpu = quantitityCPUMachine / 2
+			cpuConverted := strconv.Itoa(cpu)
+			return &cpuConverted, nil
+		} else {
+			cpuConverted := strconv.Itoa(cpu)
+			return &cpuConverted, nil
+		}
+	} else {
+		result, err := runSSHCommand(ip, "22", user, pathPrivateKey, "nproc")
+		if err != nil {
+			return nil, err
+		}
+
+		cpuF := strings.Replace(string(result), "\n", "", 1)
+
+		cpuMachine, err := strconv.Atoi(cpuF)
+		if err != nil {
+			return nil, err
+		}
+
+		if cpu > cpuMachine {
+			logInfo("Quantidade de Cpu alocada é maior que a quantidade suportada pela máquina física ", config)
+			cpu = cpuMachine / 2
+			cpuConverted := strconv.Itoa(cpu)
+			return &cpuConverted, nil
+		} else {
+			cpuConverted := strconv.Itoa(cpu)
+			return &cpuConverted, nil
+		}
+
+	}
+
+	return nil, nil
+
+}
+
+func validateYarnGPU(datanode models.Datanode, pathPrivateKey string) error {
+
+	if datanode.GPU {
+
+		command := "command -v nvidia-smi"
+
+		result, err := runSSHCommand(datanode.IP, "22", datanode.User, pathPrivateKey, command)
+
+		if err != nil {
+			return fmt.Errorf("erro ao tentar validar driver nvidia")
+		}
+
+		if result != "/usr/bin/nvidia-smi" {
+			return fmt.Errorf("erro ao alocar GPU. A máquina não contém os drivers necessários")
+		}
+
+		return nil
+	}
+
+	return nil
+
 }

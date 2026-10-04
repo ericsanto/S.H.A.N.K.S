@@ -28,6 +28,16 @@ var cmdStart = &cobra.Command{
 			return
 		}
 
+		if err := usecase.CreateFileScrapingPrometheus(clusterConfigs.Cluster); err != nil {
+			fmt.Println("Erro ao criar arquivo de scraping do prometheus: ", err)
+			return
+		}
+
+		if err := usecase.CreateDockerfile(clusterConfigs.Cluster); err != nil {
+			fmt.Println("Erro ao criar arquivo do docker compose: ", err)
+			return
+		}
+
 		if err := usecase.ConfigHosts(*clusterConfigs); err != nil {
 			fmt.Println("erro ao enviar ssh para as maquinas: ", err)
 			return

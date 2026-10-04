@@ -6,11 +6,13 @@ import (
 )
 
 type Datanode struct {
-	User       string `yaml:"user"`
-	Name       string `yaml:"name"`
-	IP         string `yaml:"ip"`
-	YarnLimit  string `yaml:"yarn_limit"`
-	SparkLimit string `yaml:"spark_limit"`
+	User               string `yaml:"user"`
+	Name               string `yaml:"name"`
+	IP                 string `yaml:"ip"`
+	YarnLimit          string `yaml:"yarn_limit"`
+	SparkLimit         string `yaml:"spark_limit"`
+	YarnLimitCPUVcores string `yaml:"cpu"`
+	GPU                bool   `yaml:"gpu;default:false"`
 }
 
 func (d *Datanode) ConvertToYarnLimit() (float64, error) {
@@ -38,4 +40,15 @@ func (d *Datanode) VerifiyValueMinYarnRequirements() error {
 	}
 
 	return nil
+}
+
+func (d *Datanode) ConvertCPULimit() (*int, error) {
+
+	cpuLimit, err := strconv.Atoi(d.YarnLimitCPUVcores)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &cpuLimit, nil
 }

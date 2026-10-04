@@ -6,11 +6,12 @@ import (
 )
 
 type Namenode struct {
-	User       string `yaml:"user"`
-	Name       string `yaml:"name"`
-	IP         string `yaml:"ip"`
-	YarnLimit  string `yaml:"yarn_limit"`
-	SparkLimit string `yaml:"spark_limit"`
+	User               string `yaml:"user"`
+	Name               string `yaml:"name"`
+	IP                 string `yaml:"ip"`
+	YarnLimit          string `yaml:"yarn_limit"`
+	SparkLimit         string `yaml:"spark_limit"`
+	YarnLimitCPUVcores string `yaml:"cpu"`
 }
 
 func (n *Namenode) ConvertToYarnLimit() (float64, error) {
@@ -38,4 +39,15 @@ func (n *Namenode) VerifiyValueMinYarnRequirements() error {
 	}
 
 	return nil
+}
+
+func (n *Namenode) ConvertCPULimit() (*int, error) {
+
+	cpuLimit, err := strconv.Atoi(n.YarnLimitCPUVcores)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &cpuLimit, nil
 }
