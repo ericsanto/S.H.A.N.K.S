@@ -6,8 +6,8 @@ services:
     build:
       context: ..
       dockerfile: master/Dockerfile.master
-    hostname: master
-    container_name: hadoop-master
+    container_name: &NAMENODE_NAME master
+    hostname: *NAMENODE_NAME
     network_mode: "host"
     env_file: ../../.env
     volumes: 
