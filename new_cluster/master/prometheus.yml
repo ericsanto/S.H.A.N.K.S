@@ -1,33 +1,25 @@
 scrape_configs:
+  - job_name: namenode
+    static_configs:
+      - targets:
+      - master:9404
 
-- job_name: namenode
-  static_configs:
-    - targets:
-      - 10.144.17.173:9404
+  - job_name: resourcemanager
+    static_configs:
+      - targets:
+      - master:9405
 
-- job_name: resourcemanager
-  static_configs:
-    - targets:
-      - 10.144.17.173:9405
-      
+  - job_name: datanodes
+    static_configs:
+      - targets:
+      - datanode1:9406
 
-- job_name: datanodes
-  static_configs:
-    - targets:
-      - 10.144.17.173:9406
-      - 10.144.36.234:9406
-      - 10.144.116.135:9406
+  - job_name: nodemanager
+    static_configs:
+      - targets:
+      - datanode1:9407
 
-- job_name: nodemanager
-  static_configs:
-    - targets:
-      - 10.144.17.173:9407
-      - 10.144.36.234:9407
-      - 10.144.116.135:9407
-
-- job_name: node_exporter
-  static_configs:
-    - targets:
-      - 10.144.17.173:9100
-      - 10.144.36.234:9100
-      - 10.144.116.135:9100
+  - job_name: node_exporter
+    static_configs:
+      - targets:
+      - datanode1:9100

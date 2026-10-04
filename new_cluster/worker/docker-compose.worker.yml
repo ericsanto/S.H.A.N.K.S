@@ -3,12 +3,21 @@ services:
     build: 
       context: ..
       dockerfile: worker/Dockerfile.worker
-    container_name: datanode_5
+    container_name: datanode2
     env_file: ../../.env
     network_mode: "host"
-    hostname: datanode_5
+    hostname: datanode2
     volumes:
       - datanode_data:/home/hadoop/hadoop/hdfs/datanode
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   node-exporter-worker:
     image: prom/node-exporter
     network_mode: service:worker

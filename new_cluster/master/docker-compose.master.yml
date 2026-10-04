@@ -1,31 +1,49 @@
 
-
 services:
-
-  master:    
+  master:
     build:
       context: ..
       dockerfile: master/Dockerfile.master
     hostname: master
     container_name: hadoop-master
-    network_mode: "host"
+    network_mode: host
     env_file: ../../.env
-    volumes: 
+    volumes:
       - namenode_data:/home/hadoop/hadoop/hdfs/namenode
       - namenode_data_datanode:/home/hadoop/hadoop/hdfs/datanode
+      - hadoop_conf:/home/hadoop/hadoop/etc/hadoop
+
+  jupyter:
+    image: quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3
+    container_name: shanks-jupyter
+    network_mode: host
+    env_file: ../../.env
+    environment:
+      HADOOP_CONF_DIR: /etc/hadoop/conf
+      YARN_CONF_DIR: /etc/hadoop/conf
+      SPARK_CONF_DIR: /home/jovyan/spark-conf
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
+      SPARK_LOCAL_IP: 10.124.34.110
+    volumes:
+      - hadoop_conf:/etc/hadoop/conf:ro
+      - notebooks:/home/jovyan/work
+      - /etc/hosts:/etc/hosts:ro
+      - ../jupyter/start-jupyter.sh:/opt/shanks/start-jupyter.sh:ro
+    command: ["bash", "/opt/shanks/start-jupyter.sh"]
+    depends_on:
+      - master
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    network_mode: "host"
+    network_mode: host
 
   grafana:
     image: grafana/grafana
     container_name: grafana
-    ports:
-      - "3000:3000"
     volumes:
       - grafana:/var/lib/grafana
       - ../grafana/provisioning:/etc/grafana/provisioning
@@ -33,19 +51,16 @@ services:
       - ../grafana/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - prometheus
-    network_mode: "host"
+    network_mode: host
 
   node-exporter-master:
     image: prom/node-exporter
     container_name: exporter-master
     network_mode: service:master
 
-
 volumes:
   grafana:
   namenode_data:
   namenode_data_datanode:
-
-networks:
-  hadoop-net:
-    driver: bridge
+  hadoop_conf:
+  notebooks:
