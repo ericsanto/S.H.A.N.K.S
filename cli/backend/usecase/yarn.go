@@ -53,7 +53,9 @@ func ConfigureYarnLimits(configCluster models.Config) error {
 		}
 
 		datanode.YarnLimit = *validatedYarnLimit
-		yarnWorkers = append(yarnWorkers, datanode)
+		yarnWorkers = append(yarnWorkers, *datanode)
+
+		fmt.Println(yarnWorkers)
 	}
 
 	if err := insertYarnLimitsToEnvFile(configCluster.Cluster.Namenode, yarnWorkers); err != nil {
@@ -145,6 +147,10 @@ func insertYarnLimitsToEnvFile(namenode models.Namenode, datanodes []models.Data
 	}
 
 	for _, datanode := range datanodes {
+
+		if datanode.IP == "" {
+			continue
+		}
 		destination := fmt.Sprintf(
 			"%s@%s:S.H.A.N.K.S/.env",
 			datanode.User,
