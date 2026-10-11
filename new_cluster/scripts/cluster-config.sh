@@ -99,11 +99,6 @@ if [ "$GPU_YARN" = "true" ]; then
         <value>/usr/bin/nvidia-smi</value>
     </property>
 
-    <property>
-        <name>yarn.nodemanager.container-executor.class</name>
-        <value>org.apache.hadoop.yarn.server.nodemanager.LinuxContainerExecutor</value>
-    </property>
-
 </configuration>
 EOF
 )

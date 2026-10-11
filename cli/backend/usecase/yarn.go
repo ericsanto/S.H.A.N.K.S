@@ -236,12 +236,12 @@ func buildYarnEnv(namenode models.Namenode, datanodes []*models.Datanode) string
 		stringBuffer.WriteString("master_GPU=true\n")
 	}
 
-	for i, datanode := range datanodes {
-		stringBuffer.WriteString(fmt.Sprintf("datanode_%d_YARN_LIMIT=%s\n", i+1, datanode.YarnLimit))
-		stringBuffer.WriteString(fmt.Sprintf("datanode_%d_YARN_LIMIT_CPU=%s\n", i+1, datanode.YarnLimitCPUVcores))
+	for _, datanode := range datanodes {
+		stringBuffer.WriteString(fmt.Sprintf("%s_YARN_LIMIT=%s\n", datanode.Name, datanode.YarnLimit))
+		stringBuffer.WriteString(fmt.Sprintf("%s_YARN_LIMIT_CPU=%s\n", datanode.Name, datanode.YarnLimitCPUVcores))
 
 		if datanode.GPU {
-			stringBuffer.WriteString(fmt.Sprintf("datanode_%d_GPU=true\n", i+1))
+			stringBuffer.WriteString(fmt.Sprintf("%s_GPU=true\n", datanode.Name))
 		}
 	}
 
