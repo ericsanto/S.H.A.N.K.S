@@ -14,34 +14,34 @@ func CreateFileScrapingPrometheus(config models.Cluster) error {
 	var bufferNodeExporter strings.Builder
 
 	for _, datanode := range config.Datanodes {
-		fmt.Fprintf(&bufferDatanodes, "      - %s:9406\n", datanode.Name)
-		fmt.Fprintf(&bufferNodeManager, "      - %s:9407\n", datanode.Name)
-		fmt.Fprintf(&bufferNodeExporter, "      - %s:9100\n", datanode.Name)
+		fmt.Fprintf(&bufferDatanodes, "        - %s:9406\n", datanode.Name)
+		fmt.Fprintf(&bufferNodeManager, "        - %s:9407\n", datanode.Name)
+		fmt.Fprintf(&bufferNodeExporter, "        - %s:9100\n", datanode.Name)
 	}
 
 	yamlFile := fmt.Sprintf(`scrape_configs:
   - job_name: namenode
     static_configs:
       - targets:
-      	- %s:9404
+        - %s:9404
 
   - job_name: resourcemanager
     static_configs:
       - targets:
-      	- %s:9405
+        - %s:9405
 
   - job_name: datanodes
     static_configs:
       - targets:
-			%s
+%s
   - job_name: nodemanager
     static_configs:
       - targets:
-			%s
+%s
   - job_name: node_exporter
     static_configs:
       - targets:
-			%s`,
+%s`,
 		config.Namenode.Name,
 		config.Namenode.Name,
 		bufferDatanodes.String(),
