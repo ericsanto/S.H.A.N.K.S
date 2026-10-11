@@ -13,12 +13,12 @@ var stopCmd = &cobra.Command{
 	Long:  `Este comando encerra os containers e desfaz as configurações de rede do cluster S.H.A.N.K.S.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		fmt.Println("Iniciando o processo de parada do cluster...")
+		fmt.Println("🛑 Iniciando o processo de parada do cluster...")
 
 		configCluster, err := usecase.ReadYaml(cfgFile)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("❌ Erro ao ler a configuração:", err)
 			return
 		}
 

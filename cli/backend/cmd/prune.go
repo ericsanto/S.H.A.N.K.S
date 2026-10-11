@@ -13,21 +13,21 @@ var pruneCmd = &cobra.Command{
 	Long:  `Este comando remove os containers e imagens não utilizadas do sistema.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		fmt.Println("Iniciando o processo de remoção de recursos não utilizados...")
+		fmt.Println("🧹 Iniciando o processo de remoção de recursos não utilizados...")
 
 		configCluster, err := usecase.ReadYaml(cfgFile)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("❌ Erro ao ler a configuração:", err)
 			return
 		}
 
 		if err := usecase.PruneCluster(configCluster); err != nil {
-			fmt.Println("Erro ao remover recursos não utilizados:", err)
+			fmt.Println("❌ Erro ao remover recursos não utilizados:", err)
 			return
 		}
 
-		fmt.Println("Processo de remoção de recursos não utilizados concluído com sucesso.")
+		fmt.Println("✅ Processo de remoção de recursos não utilizados concluído com sucesso.")
 	},
 }
 

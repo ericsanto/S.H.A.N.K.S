@@ -24,32 +24,32 @@ var cmdStart = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		clusterConfigs, err := usecase.ReadYaml(cfgFile)
 		if err != nil {
-			fmt.Println("nao foi possivel fazer a leitura do arquivo: ", err)
+			fmt.Println("❌ Não foi possível fazer a leitura do arquivo:", err)
 			return
 		}
 
 		if err := usecase.CreateFileScrapingPrometheus(clusterConfigs.Cluster); err != nil {
-			fmt.Println("Erro ao criar arquivo de scraping do prometheus: ", err)
+			fmt.Println("❌ Erro ao criar arquivo de scraping do Prometheus:", err)
 			return
 		}
 
 		if err := usecase.CreateDockerfile(clusterConfigs.Cluster); err != nil {
-			fmt.Println("Erro ao criar arquivo do docker compose: ", err)
+			fmt.Println("❌ Erro ao criar arquivo do Docker Compose:", err)
 			return
 		}
 
 		if err := usecase.ConfigHosts(*clusterConfigs); err != nil {
-			fmt.Println("erro ao enviar ssh para as maquinas: ", err)
+			fmt.Println("❌ Erro ao configurar as máquinas via SSH:", err)
 			return
 		}
 
 		if err := usecase.ConfigureYarnLimits(*clusterConfigs); err != nil {
-			fmt.Println("erro ao configurar os limites do yarn: ", err)
+			fmt.Println("❌ Erro ao configurar os limites do YARN:", err)
 			return
 		}
 
 		if err := usecase.StartCluster(*clusterConfigs); err != nil {
-			fmt.Println("erro ao startar containers: ", err)
+			fmt.Println("❌ Erro ao iniciar os containers:", err)
 			return
 		}
 	},

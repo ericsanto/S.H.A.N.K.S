@@ -18,19 +18,19 @@ var healthCmd = &cobra.Command{
 		configCluster, err := usecase.ReadYaml(cfgFile)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("❌ Erro ao ler a configuração:", err)
 			return
 		}
 
 		tuiModel, err := usecase.Health(*configCluster)
 
 		if err != nil {
-			fmt.Println("Erro ao verificar saúde do cluster:", err)
+			fmt.Println("❌ Erro ao verificar saúde do cluster:", err)
 			return
 		}
 
 		if _, err := tea.NewProgram(*tuiModel).Run(); err != nil {
-			log.Fatal(err)
+			log.Fatalf("❌ Erro ao executar o painel de saúde: %v", err)
 		}
 
 		// fmt.Println("Processo de verificação de saúde concluído com sucesso.")

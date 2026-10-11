@@ -207,7 +207,7 @@ func StartCluster(configCluster models.Config) error {
 
 func buildImage(commandImageBuilder string, errors chan<- error, wg *sync.WaitGroup, isImageBuildOK chan<- bool) {
 
-	logInfo("Construindo a imagem hadoop-base na master; isso pode demorar...")
+	logInfo("🚧 Construindo a imagem hadoop-base na master; isso pode demorar...")
 
 	defer wg.Done()
 
@@ -239,7 +239,7 @@ func startContainer(commandMaster string, isBuildImageOK <-chan bool, errors cha
 			return
 		}
 
-		logSuccess("Container da master iniciado.")
+		logSuccess("✅ Container da master iniciado.")
 		return
 	} else {
 		logInfo("Container da master não será iniciado porque o build falhou.")
