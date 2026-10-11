@@ -131,14 +131,19 @@ sudo ./install.sh
 Execute `install.sh` a partir da raiz do repositório, como no comando acima,
 para que os arquivos carregados por `source` sejam encontrados.
 
+O script oferece suporte a Ubuntu, Debian, Raspbian e Arch Linux. No Arch,
+instala Docker, Docker Compose e, quando uma GPU NVIDIA é detectada, o pacote
+`nvidia-container-toolkit` do repositório oficial.
+
 O script:
 
-- atualiza o Ubuntu;
+- atualiza os pacotes do sistema;
 - cria o grupo `shanks`;
 - instala `/usr/local/bin/config-hosts-shanks.sh`;
 - cria a regra limitada em `/etc/sudoers.d/shanks`;
 - instala/inicia ZeroTier;
 - instala Docker Engine, Buildx e Compose;
+- registra o runtime NVIDIA no Docker quando `nvidia-smi` está disponível;
 - inclui o usuário no grupo `docker`;
 - utiliza o projeto previamente clonado em `~/S.H.A.N.K.S`.
 

@@ -5,47 +5,30 @@ install_docker_based_arch() {
 
     source  /etc/os-release
 
-    install_nvidia_driver_container "$ID"
-
     if command -v docker >/dev/null 2>&1; then
         echo 'Docker existe'
-        return 0
-    fi
+    else
+        echo 'Docker não existe'
 
-    echo 'Docker não existe'
+        case "$ID" in
+            garuda|arch|manjaro)
+                pacman -Syu --noconfirm --needed docker docker-buildx docker-compose
+                ;;
+            ubuntu|debian|raspbian)
+                arch=$(dpkg --print-architecture)
+                codename="${UBUNTU_CODENAME:-$VERSION_CODENAME}"
+                docker_repo="$ID"
 
-    arch=$(dpkg --print-architecture)
-    codename="${UBUNTU_CODENAME:-$VERSION_CODENAME}"
+                echo "Distribuição $ID"
+                echo "Repositório Docker $docker_repo"
 
-    case "$ID" in
-        ubuntu)
-            docker_repo="ubuntu"
-            ;;
-        debian)
-            docker_repo="debian"
-            ;;
-        raspbian)
-            docker_repo="raspbian"
-            ;;
-        rhel)
-            docker_repo="rhel"
-            ;;
-        *)
-            echo "Distribuição não suportada: $ID"
-            return 1
-            ;;
-    esac
+                apt-get update
+                apt-get install -y ca-certificates curl
+                install -m 0755 -d /etc/apt/keyrings
+                curl -fsSL "https://download.docker.com/linux/${docker_repo}/gpg" -o /etc/apt/keyrings/docker.asc
+                chmod a+r /etc/apt/keyrings/docker.asc
 
-    echo "Distribuição $ID"
-    echo "Repositório Docker $docker_repo"
-
-    apt-get update
-    apt-get install -y ca-certificates curl
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL "https://download.docker.com/linux/${docker_repo}/gpg" -o /etc/apt/keyrings/docker.asc
-    chmod a+r /etc/apt/keyrings/docker.asc
-
-    cat >/etc/apt/sources.list.d/docker.sources <<EOF
+                cat >/etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/${docker_repo}
 Suites: ${codename}
@@ -54,8 +37,15 @@ Architectures: ${arch}
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
 
-    apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                apt-get update
+                apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                ;;
+            *)
+                echo "Distribuição não suportada: $ID"
+                return 1
+                ;;
+        esac
+    fi
 
     groupadd -f docker
 
@@ -67,6 +57,8 @@ EOF
         return 1
     fi
 
+    systemctl enable --now docker
+    install_nvidia_driver_container "$ID"
 }
 
 
@@ -83,9 +75,22 @@ install_nvidia_driver_container() {
             rhel)
                 download_toolkit_redhat
                 ;;
+            arch|garuda|manjaro)
+                download_toolkit_arch
+                ;;
             *)
+                echo "NVIDIA Container Toolkit não suportado para a distribuição: $1"
+                return 1
 
         esac
+
+        if ! command -v nvidia-ctk >/dev/null 2>&1; then
+            echo "nvidia-ctk não foi encontrado após a instalação"
+            return 1
+        fi
+
+        nvidia-ctk runtime configure --runtime=docker
+        systemctl restart docker
     fi
 
     return
@@ -115,8 +120,6 @@ downlaod_toolkit_ubuntu() {
       libnvidia-container1=${NVIDIA_CONTAINER_TOOLKIT_VERSION}
 
 
-    systemctl restart docker
-
 }
 
 download_toolkit_redhat() {
@@ -136,5 +139,8 @@ download_toolkit_redhat() {
       libnvidia-container-tools-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
       libnvidia-container1-${NVIDIA_CONTAINER_TOOLKIT_VERSION}
 
-    systemctl restart docker
+}
+
+download_toolkit_arch() {
+    pacman -S --noconfirm --needed nvidia-container-toolkit
 }

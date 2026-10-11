@@ -5,7 +5,23 @@ source docker-configure.sh
 source zerotier-configure.sh
 
 
-apt update && apt upgrade -y    
+source /etc/os-release
+
+case "$ID" in
+    garuda|arch|manjaro)
+        pacman -Syu --noconfirm
+        ;;
+    ubuntu|debian|raspbian)
+        apt-get update && apt-get upgrade -y
+        ;;
+    rhel)
+        dnf upgrade -y
+        ;;
+    *)
+        echo "Distribuição não suportada: $ID"
+        exit 1
+        ;;
+esac
 
 bin_directory="/usr/local/bin"
 
