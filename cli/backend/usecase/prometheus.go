@@ -23,25 +23,25 @@ func CreateFileScrapingPrometheus(config models.Cluster) error {
   - job_name: namenode
     static_configs:
       - targets:
-      - %s:9404
+      	- %s:9404
 
   - job_name: resourcemanager
     static_configs:
       - targets:
-      - %s:9405
+      	- %s:9405
 
   - job_name: datanodes
     static_configs:
       - targets:
-%s
+			%s
   - job_name: nodemanager
     static_configs:
       - targets:
-%s
+			%s
   - job_name: node_exporter
     static_configs:
       - targets:
-%s`,
+			%s`,
 		config.Namenode.Name,
 		config.Namenode.Name,
 		bufferDatanodes.String(),
