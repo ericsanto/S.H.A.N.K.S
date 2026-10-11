@@ -24,7 +24,7 @@ services:
       SPARK_CONF_DIR: /home/jovyan/spark-conf
       PYSPARK_PYTHON: python3
       PYSPARK_DRIVER_PYTHON: python3
-      SPARK_LOCAL_IP: 10.124.34.110
+      SPARK_LOCAL_IP: 10.147.19.217
     volumes:
       - hadoop_conf:/etc/hadoop/conf:ro
       - notebooks:/home/jovyan/work
