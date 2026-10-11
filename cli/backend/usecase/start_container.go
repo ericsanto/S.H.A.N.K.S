@@ -12,6 +12,11 @@ import (
 
 var logMu sync.Mutex
 
+type imageVerificationResult struct {
+	output string
+	err    error
+}
+
 func logInfo(format string, args ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
@@ -85,7 +90,9 @@ func StartCluster(configCluster models.Config) error {
 	done := make(chan bool)
 	fail := make(chan bool)
 	isImageBuildOK := make(chan bool, 1)
-	errors := make(chan error)
+	// Cada fluxo (master ou worker) produz no máximo um erro. O buffer evita
+	// que uma etapa bloqueie antes de conseguir sinalizar a próxima.
+	errors := make(chan error, len(configCluster.Cluster.Datanodes)+1)
 
 	// resultImageBuildVerifiedMaster := make(chan bool, 1)
 
@@ -103,8 +110,11 @@ func StartCluster(configCluster models.Config) error {
 
 	commandMaster := fmt.Sprintf("cd %s/S.H.A.N.K.S/new_cluster/master && docker compose -f 'docker-compose.master.yml' up -d --build", home)
 	commandWorkers := "cd $HOME/S.H.A.N.K.S/new_cluster/worker && docker compose -f 'docker-compose.worker.yml' up -d --build"
-	commandDockerBuildImageMaster := fmt.Sprintf("cd %s/S.H.A.N.K.S/new_cluster && docker build --no-cache -t hadoop-base -f Dockerfile.base .", home)
-	commandDockerBuildWorkers := "cd $HOME/S.H.A.N.K.S/new_cluster && docker build --no-cache -t hadoop-base -f Dockerfile.base ."
+	// O cache é essencial aqui: a imagem base baixa e expande vários gigabytes.
+	// Forçar --no-cache fazia toda tentativa reiniciar do zero após uma queda de
+	// rede e acumulava dezenas de gigabytes de camadas sem tag nos workers.
+	commandDockerBuildImageMaster := fmt.Sprintf("cd %s/S.H.A.N.K.S/new_cluster && docker build -t hadoop-base -f Dockerfile.base .", home)
+	commandDockerBuildWorkers := "cd $HOME/S.H.A.N.K.S/new_cluster && docker build -t hadoop-base -f Dockerfile.base ."
 
 	privatePathSSHKey, err := getPathPrivateKey()
 	if err != nil {
@@ -139,7 +149,7 @@ func StartCluster(configCluster models.Config) error {
 
 	for _, datanode := range configCluster.Cluster.Datanodes {
 
-		imageVerified := make(chan string, 1)
+		imageVerified := make(chan imageVerificationResult, 1)
 		imageReady := make(chan bool, 1)
 
 		wg.Add(1)
@@ -237,7 +247,7 @@ func startContainer(commandMaster string, isBuildImageOK <-chan bool, errors cha
 
 }
 
-func verifyImageBuildInDatanode(datanode models.Datanode, errors chan<- error, resultImageBuildVerifiedDatanode chan<- string, privatePathSSHKey, isImageBuilded string,
+func verifyImageBuildInDatanode(datanode models.Datanode, errors chan<- error, resultImageBuildVerifiedDatanode chan<- imageVerificationResult, privatePathSSHKey, isImageBuilded string,
 	wg *sync.WaitGroup) {
 
 	defer wg.Done()
@@ -247,23 +257,36 @@ func verifyImageBuildInDatanode(datanode models.Datanode, errors chan<- error, r
 	if err != nil {
 		logFailure("[%s] Não foi possível verificar a imagem.", datanode.Name)
 		errors <- fmt.Errorf("erro na verificação do build no datanode %s: %v", datanode.Name, err)
+		resultImageBuildVerifiedDatanode <- imageVerificationResult{err: err}
+		return
 	} else if strings.TrimSpace(outSsh) == "" {
 		logInfo("[%s] Imagem não encontrada; iniciando o build.", datanode.Name)
 	} else {
 		logSuccess("[%s] Imagem hadoop-base encontrada.", datanode.Name)
 	}
 
-	resultImageBuildVerifiedDatanode <- strings.TrimSpace(outSsh)
+	resultImageBuildVerifiedDatanode <- imageVerificationResult{output: strings.TrimSpace(outSsh)}
 
 }
 
-func imageBuildDatanode(datanode models.Datanode, resultImageBuildVerifiedDatanode <-chan string, privatePathSSHKey, commandDockerBuildImage string, errors chan<- error,
+func imageBuildDatanode(datanode models.Datanode, resultImageBuildVerifiedDatanode <-chan imageVerificationResult, privatePathSSHKey, commandDockerBuildImage string, errors chan<- error,
 	wg *sync.WaitGroup, resultBuidImageDatanode chan<- bool) {
 
 	defer wg.Done()
-	output := <-resultImageBuildVerifiedDatanode
+	imageReady := false
+	defer func() {
+		// Toda saída precisa liberar okBuildImage; caso contrário, o comando
+		// start fica bloqueado para sempre neste worker.
+		resultBuidImageDatanode <- imageReady
+	}()
 
-	if output == "" {
+	verification := <-resultImageBuildVerifiedDatanode
+
+	if verification.err != nil {
+		return
+	}
+
+	if verification.output == "" {
 		logInfo("[%s] Construindo a imagem hadoop-base; isso pode demorar...", datanode.Name)
 
 		outBuild, err := runSSHCommand(datanode.IP, "22", datanode.User, privatePathSSHKey, commandDockerBuildImage)
@@ -274,11 +297,10 @@ func imageBuildDatanode(datanode models.Datanode, resultImageBuildVerifiedDatano
 			return
 		}
 
-		resultBuidImageDatanode <- true
-
+		imageReady = true
 		logSuccess("[%s] Build da imagem concluído.", datanode.Name)
 	} else {
-		resultBuidImageDatanode <- true
+		imageReady = true
 	}
 }
 
