@@ -15,6 +15,7 @@ func PruneCluster(configCluster *models.Config) error {
 	logInfo("Destruindo todo o cluster")
 
 	var wg sync.WaitGroup
+	chanErrorsMaster := make(chan error, 1)
 
 	home, err := getHomeDir()
 	if err != nil {
@@ -23,31 +24,40 @@ func PruneCluster(configCluster *models.Config) error {
 	}
 
 	commandDownContainersMaster := fmt.Sprintf("cd %s/S.H.A.N.K.S/new_cluster/master && docker compose -f docker-compose.master.yml down -v", home)
-	commandRemoveImagesMaster := "docker images -q master-master:latest | xargs -r docker rmi -f &&  docker images -q hadoop-base:latest | xargs -r docker rmi -f; docker images -q grafana/grafana:latest | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f; docker images -q prom/prometheus:latest | xargs -r docker rmi -f"
+	commandRemoveImagesMaster := "docker images -q master-master:latest | xargs -r docker rmi -f &&  docker images -q hadoop-base:latest | xargs -r docker rmi -f; docker images -q grafana/grafana:latest | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f; docker images -q prom/prometheus:latest | xargs -r docker rmi -f; docker images -q quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3 | xargs -r docker rmi -f"
 
 	commandDownContainersWorker := "cd $HOME/S.H.A.N.K.S/new_cluster/worker && docker compose -f docker-compose.worker.yml down -v"
-	commandRemoveImagesWorker := "docker images -q worker-worker:latest | xargs -r docker rmi -f && docker images -q hadoop-base:latest | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f"
+	commandRemoveImagesWorker := "docker images -q worker-worker:latest | xargs -r docker rmi -f && docker images -q hadoop-base:latest | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f; docker images -q quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3 | xargs -r docker rmi -f"
 
-	logInfo("Desfazendo configuarções do arquivo /etc/hosts feita pelo S.H.A.N.K.S")
-	if err := exec.Command("bash", "-c", "/usr/local/bin/remove-config-hosts.sh").Run(); err != nil {
-		logFailure("Erro ao desfazer configurações do arquivo /etc/hosts")
-		return err
-	}
-	logSuccess("Configuração do /etc/hosts desfeita com sucesso")
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logInfo("Desfazendo configuarções do arquivo /etc/hosts feita pelo S.H.A.N.K.S")
+		if err := exec.Command("bash", "-c", "/usr/local/bin/remove-config-hosts.sh").Run(); err != nil {
+			logFailure("Erro ao desfazer configurações do arquivo /etc/hosts")
+			chanErrorsMaster <- err
+			return
+		}
+		logSuccess("Configuração do /etc/hosts desfeita com sucesso")
 
-	logInfo("Derrubando containers do master")
-	if err := exec.Command("bash", "-c", commandDownContainersMaster).Run(); err != nil {
-		logFailure("Erro ao derrubar containers do master")
-		return err
-	}
-	logSuccess("Containers do master derrubados")
+		logInfo("Derrubando containers do master")
+		if err := exec.Command("bash", "-c", commandDownContainersMaster).Run(); err != nil {
+			logFailure("Erro ao derrubar containers do master")
+			chanErrorsMaster <- err
+			return
+		}
+		logSuccess("Containers do master derrubados")
 
-	if err := exec.Command("bash", "-c", commandRemoveImagesMaster).Run(); err != nil {
-		fmt.Println(err)
-		logFailure("Erro ao remover imagens do master")
-		return err
-	}
-	logSuccess("Imagens do master removidas")
+		if err := exec.Command("bash", "-c", commandRemoveImagesMaster).Run(); err != nil {
+			fmt.Println("❌", err)
+			logFailure("Erro ao remover imagens do master")
+			chanErrorsMaster <- err
+			return
+		}
+		logSuccess("Imagens do master removidas")
+		close(chanErrorsMaster)
+
+	}()
 
 	pathPrivateKey, err := getPathPrivateKey()
 	if err != nil {
@@ -63,7 +73,7 @@ func PruneCluster(configCluster *models.Config) error {
 			defer wg.Done()
 			logInfo("Removendo tag do S.H.A.N.K.S do arquivo /etc/hosts do datanode %s", datanode.Name)
 
-			if _, err := runSSHCommand(datanode.IP, "22", datanode.User, pathPrivateKey, "/usr/local/bin/remove-config-hosts.sh"); err != nil {
+			if _, err := runSSHCommand(datanode.IP, "22", datanode.User, pathPrivateKey, "sudo /usr/local/bin/remove-config-hosts.sh"); err != nil {
 				logFailure("Erro ao remover tag do S.H.A.N.K.S do arquivo /etc/hosts do datanode %s", datanode.Name)
 				chanErrorsDatanode <- err
 				return
@@ -90,6 +100,12 @@ func PruneCluster(configCluster *models.Config) error {
 
 	wg.Wait()
 	close(chanErrorsDatanode)
+
+	for err := range chanErrorsMaster {
+		if err != nil {
+			return fmt.Errorf("Erro ao remover configuração do master: %v", err)
+		}
+	}
 
 	for err := range chanErrorsDatanode {
 		if err != nil {
