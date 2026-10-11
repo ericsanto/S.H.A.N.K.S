@@ -124,6 +124,7 @@ sudo apt-get install -y git
 cd "$HOME"
 git clone --branch staging --single-branch https://github.com/ericsanto/S.H.A.N.K.S.git
 cd S.H.A.N.K.S
+sudo chmod +x install.sh
 sudo ./install.sh
 ```
 
@@ -217,10 +218,12 @@ cluster:
 | `namenode.name` | Nome do master; a configuração atual espera `master` |
 | `namenode.ip` | IP alcançável do master |
 | `namenode.yarn_limit` | Memória do YARN em GB, como string |
+| `namenode.gpu` | Opcional; use `true` para disponibilizar uma GPU NVIDIA ao NodeManager da master. Omitido equivale a `false` |
 | `datanodes[].user` | Usuário da conexão SSH |
 | `datanodes[].name` | Nome lógico do worker |
 | `datanodes[].ip` | IP alcançável do worker |
 | `datanodes[].yarn_limit` | Memória do YARN em GB |
+| `datanodes[].gpu` | Opcional; use `true` para disponibilizar uma GPU NVIDIA ao NodeManager do worker. Omitido equivale a `false` |
 
 ### Alvos do Prometheus
 

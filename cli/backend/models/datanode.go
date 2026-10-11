@@ -12,7 +12,7 @@ type Datanode struct {
 	YarnLimit          string `yaml:"yarn_limit"`
 	SparkLimit         string `yaml:"spark_limit"`
 	YarnLimitCPUVcores string `yaml:"cpu"`
-	GPU                bool   `yaml:"gpu;default:false"`
+	GPU                bool   `yaml:"gpu"`
 }
 
 func (d *Datanode) ConvertToYarnLimit() (float64, error) {

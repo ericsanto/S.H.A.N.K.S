@@ -12,6 +12,7 @@ type Namenode struct {
 	YarnLimit          string `yaml:"yarn_limit"`
 	SparkLimit         string `yaml:"spark_limit"`
 	YarnLimitCPUVcores string `yaml:"cpu"`
+	GPU                bool   `yaml:"gpu"`
 }
 
 func (n *Namenode) ConvertToYarnLimit() (float64, error) {

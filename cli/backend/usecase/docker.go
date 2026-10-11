@@ -3,12 +3,143 @@ package usecase
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/ericsanto/S.H.A.N.K.S/cli/backend/models"
 )
 
 func CreateDockerfile(config models.Cluster) error {
-	dockerComposeFileMaster := fmt.Sprintf(`
+
+	chanErrors := make(chan error, len(config.Datanodes))
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		dockerComposeFileMaster := createMasterCompose(config.Namenode)
+
+		if err := os.WriteFile("new_cluster/master/docker-compose.master.yml", []byte(dockerComposeFileMaster), 0644); err != nil {
+			chanErrors <- err
+			return
+		}
+	}()
+
+	privateKeyPath, err := getPathPrivateKey()
+	if err != nil {
+		return fmt.Errorf("não foi possível localizar a chave SSH: %w", err)
+	}
+
+	const createWorkerComposeCommand = `mkdir -p "$HOME/S.H.A.N.K.S/new_cluster/worker" && cat > "$HOME/S.H.A.N.K.S/new_cluster/worker/docker-compose.worker.yml"`
+
+	for _, datanode := range config.Datanodes {
+		if datanode == nil {
+			return fmt.Errorf("datanode inválido na configuração")
+		}
+
+		go func() {
+			var dockerComposeFile string
+			if datanode.GPU {
+				dockerComposeFile = fmt.Sprintf(`
+services:
+  worker:
+    build:
+      context: ..
+      dockerfile: worker/Dockerfile.worker
+    container_name: &DATANODE_NAME %s
+    env_file: ../../.env
+    network_mode: "host"
+    hostname: *DATANODE_NAME
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      SPARK_WORKER_MEMORY: "%s"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - datanode_data:/home/hadoop/hadoop/hdfs/datanode
+
+  node-exporter-worker:
+    image: prom/node-exporter
+    network_mode: service:worker
+
+
+volumes:
+  datanode_data:
+`, datanode.Name, datanode.SparkLimit)
+
+			} else {
+				dockerComposeFile = fmt.Sprintf(`
+services:
+  worker:
+    build:
+      context: ..
+      dockerfile: worker/Dockerfile.worker
+    container_name: &DATANODE_NAME %s
+    env_file: ../../.env
+    network_mode: "host"
+    hostname: *DATANODE_NAME
+    environment:
+      SPARK_WORKER_MEMORY: "%s"
+    volumes:
+      - datanode_data:/home/hadoop/hadoop/hdfs/datanode
+
+  node-exporter-worker:
+    image: prom/node-exporter
+    network_mode: service:worker
+
+
+volumes:
+  datanode_data:
+`, datanode.Name, datanode.SparkLimit)
+			}
+
+			if _, err := runSSHCommandBuffer(
+				datanode.IP,
+				"22",
+				datanode.User,
+				privateKeyPath,
+				createWorkerComposeCommand,
+				dockerComposeFile,
+			); err != nil {
+				chanErrors <- fmt.Errorf("não foi possível criar o docker-compose.worker.yml no datanode %s: %w", datanode.Name, err)
+			}
+		}()
+
+	}
+
+	wg.Wait()
+	close(chanErrors)
+
+	for err := range chanErrors {
+		if err != nil {
+			return fmt.Errorf("erro ao criar arquivos docker-compose: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func createMasterCompose(namenode models.Namenode) string {
+	masterGPUConfig := ""
+	if namenode.GPU {
+		masterGPUConfig = `    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+`
+	}
+
+	return fmt.Sprintf(`
 services:
   master:
     build:
@@ -18,7 +149,7 @@ services:
     container_name: hadoop-master
     network_mode: host
     env_file: ../../.env
-    volumes:
+%s    volumes:
       - namenode_data:/home/hadoop/hadoop/hdfs/namenode
       - namenode_data_datanode:/home/hadoop/hadoop/hdfs/datanode
       - hadoop_conf:/home/hadoop/hadoop/etc/hadoop
@@ -73,95 +204,5 @@ volumes:
   namenode_data:
   namenode_data_datanode:
   hadoop_conf:
-  notebooks:`, config.Namenode.IP)
-
-	if err := os.WriteFile("new_cluster/master/docker-compose.master.yml", []byte(dockerComposeFileMaster), 0644); err != nil {
-		return err
-	}
-
-	privateKeyPath, err := getPathPrivateKey()
-	if err != nil {
-		return fmt.Errorf("não foi possível localizar a chave SSH: %w", err)
-	}
-
-	const createWorkerComposeCommand = `mkdir -p "$HOME/S.H.A.N.K.S/new_cluster/worker" && cat > "$HOME/S.H.A.N.K.S/new_cluster/worker/docker-compose.worker.yml"`
-
-	for _, datanode := range config.Datanodes {
-		if datanode == nil {
-			return fmt.Errorf("datanode inválido na configuração")
-		}
-
-		var dockerComposeFile string
-		if datanode.GPU {
-			dockerComposeFile = fmt.Sprintf(`
-services:
-  worker:
-    build:
-      context: ..
-      dockerfile: worker/Dockerfile.worker
-    container_name: &DATANODE_NAME %s
-    env_file: ../../.env
-    network_mode: "host"
-    hostname: *DATANODE_NAME
-    environment:
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      SPARK_WORKER_MEMORY: "%s"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    volumes:
-      - datanode_data:/home/hadoop/hadoop/hdfs/datanode
-
-  node-exporter-worker:
-    image: prom/node-exporter
-    network_mode: service:worker
-
-
-volumes:
-  datanode_data:
-`, datanode.Name, datanode.SparkLimit)
-
-		} else {
-			dockerComposeFile = fmt.Sprintf(`
-services:
-  worker:
-    build:
-      context: ..
-      dockerfile: worker/Dockerfile.worker
-    container_name: &DATANODE_NAME %s
-    env_file: ../../.env
-    network_mode: "host"
-    hostname: *DATANODE_NAME
-    environment:
-      SPARK_WORKER_MEMORY: "%s"
-    volumes:
-      - datanode_data:/home/hadoop/hadoop/hdfs/datanode
-
-  node-exporter-worker:
-    image: prom/node-exporter
-    network_mode: service:worker
-
-
-volumes:
-  datanode_data:
-`, datanode.Name, datanode.SparkLimit)
-		}
-
-		if _, err := runSSHCommandBuffer(
-			datanode.IP,
-			"22",
-			datanode.User,
-			privateKeyPath,
-			createWorkerComposeCommand,
-			dockerComposeFile,
-		); err != nil {
-			return fmt.Errorf("não foi possível criar o docker-compose.worker.yml no datanode %s: %w", datanode.Name, err)
-		}
-	}
-
-	return nil
+  notebooks:`, masterGPUConfig, namenode.IP)
 }
