@@ -5,6 +5,7 @@ cluster:
     ip: "10.147.19.217"
     yarn_limit: "6"
     cpu: "4"
+    gpu: true
 
   datanodes:
   - user: "ericsantos"
@@ -13,3 +14,8 @@ cluster:
     yarn_limit: "8"
     cpu: "8"
     gpu: true
+  - user: "eric-santos"
+    name: "datanode16"
+    ip: "10.147.19.158" # NotebookEric
+    yarn_limit: "2"
+    cpu: "4"

@@ -8,6 +8,15 @@ services:
     container_name: hadoop-master
     network_mode: host
     env_file: ../../.env
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     volumes:
       - namenode_data:/home/hadoop/hadoop/hdfs/namenode
       - namenode_data_datanode:/home/hadoop/hadoop/hdfs/datanode
