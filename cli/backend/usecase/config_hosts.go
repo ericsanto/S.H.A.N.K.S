@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/ericsanto/S.H.A.N.K.S/cli/backend/models"
 )
@@ -12,6 +13,8 @@ import (
 /// ENVIAR DE FORMA ASSINCRONA
 
 func ConfigHosts(c models.Config) error {
+
+	var wg sync.WaitGroup
 
 	nameNode := fmt.Sprintf("%s %s\n", c.Cluster.Namenode.IP, c.Cluster.Namenode.Name)
 
@@ -35,29 +38,28 @@ func ConfigHosts(c models.Config) error {
 		return err
 	}
 
+	chanErrorsDatanode := make(chan models.Datanode, len(c.Cluster.Datanodes)+1)
+
 	// POPULAR O ARQUIVO /ETC/HOSTS DE CADA DATANODE COM O BUFFER DE DADOS
 	for _, datanode := range c.Cluster.Datanodes {
-		// passwordDatanode := readPasswordInteractive(datanode.User, datanode.IP)
 
-		// if passwordDatanode == "" {
-		// 	return fmt.Errorf("senha nao pode ser vazia")
-		// }
+		wg.Add(1)
+		go func(datanode *models.Datanode) {
+			defer wg.Done()
+			_, err := runSSHCommandBuffer(datanode.IP, "22", datanode.User, privateKey, "sudo -n /usr/local/bin/config-hosts-shanks.sh", bufferDatanodes.String())
+			if err != nil {
+				chanErrorsDatanode <- *datanode
+			}
 
-		// command := generateCommandToUpdateHosts(passwordDatanode, bufferDatanodes)
-
-		// EXECUTA O COMANDO PARA ATUALIZAR O ARQUIVO /ETC/HOSTS DO DATANODE VIA SSH
-		_, err := runSSHCommandBuffer(datanode.IP, "22", datanode.User, privateKey, "sudo -n /usr/local/bin/config-hosts-shanks.sh", bufferDatanodes.String())
-		if err != nil {
-			return err
-		}
-
+		}(datanode)
 	}
 
-	// passwordNamenode := readPasswordInteractive(c.Cluster.Namenode.User, c.Cluster.Namenode.IP)
+	wg.Wait()
+	close(chanErrorsDatanode)
 
-	// command := generateCommandToUpdateHosts(passwordNamenode, bufferDatanodes)
-
-	// POPULA O ARQUIVO /ETC/HOSTS DO NAMENODE COM O BUFFER DE DADOS
+	for errDatanode := range chanErrorsDatanode {
+		return fmt.Errorf("erro ao configurar /etc/hosts no datanode %s (%s)", errDatanode.Name, errDatanode.IP)
+	}
 
 	command := exec.Command("sudo", "-n", "/usr/local/bin/config-hosts-shanks.sh")
 
@@ -79,6 +81,6 @@ func ConfigHosts(c models.Config) error {
 // 	return fmt.Sprintf(`echo "%s" | sudo -S sh -c " { sed '/# START S.H.A.N.K.S #/,/# END S.H.A.N.K.S #/d' /etc/hosts; echo  '# START S.H.A.N.K.S #'; echo '%s'; echo '# END S.H.A.N.K.S #'; } > /etc/hosts.tmp && mv /etc/hosts.tmp /etc/hosts "`, password, bufferDatanodes.String())
 // }
 
-func pruneConfigHosts(password string) string {
-	return fmt.Sprintf(`echo "%s" | sudo -S sh -c "sed -i '/# START S.H.A.N.K.S #/,/# END S.H.A.N.K.S #/d' /etc/hosts"`, password)
-}
+// func pruneConfigHosts(password string) string {
+// 	return fmt.Sprintf(`echo "%s" | sudo -S sh -c "sed -i '/# START S.H.A.N.K.S #/,/# END S.H.A.N.K.S #/d' /etc/hosts"`, password)
+// }

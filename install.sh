@@ -28,13 +28,19 @@ mv config-hosts-shanks.sh $bin_directory
 
 chown -R root:root /usr/local/bin/config-hosts-shanks.sh
 
+curl  https://raw.githubusercontent.com/ericsanto/S.H.A.N.K.S/staging/remove-config-hosts.sh  -o remove-config-hosts.sh && \
+chmod +x remove-config-hosts.sh && \
+mv remove-config-hosts.sh $bin_directory
+
+chown -R root:root /usr/local/bin/remove-config-hosts.sh
+
 ### DOWNLAOD ZEROTIER ###
 install_zerotier
 
 SUDOERS_TEMP=$(mktemp)
 
 printf '%s\n' \
-    '%shanks ALL=(root) NOPASSWD: /usr/local/bin/config-hosts-shanks.sh' \
+    '%shanks ALL=(root) NOPASSWD: /usr/local/bin/config-hosts-shanks.sh, /usr/local/bin/remove-config-hosts.sh' \
     > "$SUDOERS_TEMP"
 
 chmod 0440 "$SUDOERS_TEMP"
