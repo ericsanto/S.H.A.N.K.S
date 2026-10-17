@@ -187,6 +187,33 @@ go build -o shanks .
 ./shanks --help
 ```
 
+### Ambiente de machine learning
+
+O `start` constrói variantes do `hadoop-base` com Python 3.11.14, PySpark
+3.5.3, NumPy 2.2.6 e PyTorch 2.9.1. Nós com `gpu: true` recebem a variante
+CUDA 12.6 com NCCL; os demais recebem PyTorch CPU. As imagens usam as tags:
+
+- `hadoop-base:ml311-cu126` para nós com GPU;
+- `hadoop-base:ml311-cpu` para nós sem GPU;
+- `shanks-jupyter:ml311` para o Jupyter e seu kernel Python 3.11.
+
+O notebook `SHANKS_duas_GPUs_Jupyter.ipynb` é disponibilizado automaticamente
+em `/home/jovyan/work` e valida dois executores YARN antes de iniciar um treino
+distribuído com `TorchDistributor` e NCCL.
+
+Para validar uma imagem CUDA diretamente em um nó GPU:
+
+```bash
+docker run --rm --gpus all \
+  --entrypoint /opt/shanks-venv/bin/python \
+  hadoop-base:ml311-cu126 \
+  /opt/shanks-venv/verify_environment.py --flavor=cu126 --gpu
+```
+
+O driver NVIDIA e o NVIDIA Container Toolkit continuam sendo requisitos do
+host. O build valida versões e suporte NCCL; o comando acima valida acesso real
+à GPU em runtime.
+
 Use uma versão de Go compatível com [go.mod](go.mod), atualmente Go 1.25. Prefira recompilar o binário presente no repositório para a arquitetura do master.
 
 ## Configuração
