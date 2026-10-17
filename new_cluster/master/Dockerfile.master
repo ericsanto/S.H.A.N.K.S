@@ -1,4 +1,6 @@
-FROM hadoop-base
+ARG SHANKS_BASE_IMAGE=hadoop-base:ml311-cpu
+
+FROM ${SHANKS_BASE_IMAGE}
 
 COPY  /scripts /usr/local/bin
 COPY jmx /opt/jmx

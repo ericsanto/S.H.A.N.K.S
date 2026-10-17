@@ -10,7 +10,7 @@ import (
 
 func CreateDockerfile(config models.Cluster) error {
 
-	chanErrors := make(chan error, len(config.Datanodes))
+	chanErrors := make(chan error, len(config.Datanodes)+1)
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -37,7 +37,11 @@ func CreateDockerfile(config models.Cluster) error {
 			return fmt.Errorf("datanode inválido na configuração")
 		}
 
-		go func() {
+		wg.Add(1)
+		go func(datanode *models.Datanode) {
+			defer wg.Done()
+
+			baseImage, _ := mlImageConfig(datanode.GPU)
 			var dockerComposeFile string
 			if datanode.GPU {
 				dockerComposeFile = fmt.Sprintf(`
@@ -46,6 +50,8 @@ services:
     build:
       context: ..
       dockerfile: worker/Dockerfile.worker
+      args:
+        SHANKS_BASE_IMAGE: %s
     container_name: &DATANODE_NAME %s
     env_file: ../../.env
     network_mode: "host"
@@ -70,7 +76,7 @@ services:
 
 volumes:
   datanode_data:
-`, datanode.Name, datanode.SparkLimit)
+`, baseImage, datanode.Name, datanode.SparkLimit)
 
 			} else {
 				dockerComposeFile = fmt.Sprintf(`
@@ -79,6 +85,8 @@ services:
     build:
       context: ..
       dockerfile: worker/Dockerfile.worker
+      args:
+        SHANKS_BASE_IMAGE: %s
     container_name: &DATANODE_NAME %s
     env_file: ../../.env
     network_mode: "host"
@@ -95,7 +103,7 @@ services:
 
 volumes:
   datanode_data:
-`, datanode.Name, datanode.SparkLimit)
+`, baseImage, datanode.Name, datanode.SparkLimit)
 			}
 
 			if _, err := runSSHCommandBuffer(
@@ -108,7 +116,7 @@ volumes:
 			); err != nil {
 				chanErrors <- fmt.Errorf("não foi possível criar o docker-compose.worker.yml no datanode %s: %w", datanode.Name, err)
 			}
-		}()
+		}(datanode)
 
 	}
 
@@ -125,6 +133,7 @@ volumes:
 }
 
 func createMasterCompose(namenode models.Namenode) string {
+	baseImage, _ := mlImageConfig(namenode.GPU)
 	masterGPUConfig := ""
 	if namenode.GPU {
 		masterGPUConfig = `    environment:
@@ -145,6 +154,8 @@ services:
     build:
       context: ..
       dockerfile: master/Dockerfile.master
+      args:
+        SHANKS_BASE_IMAGE: %s
     hostname: master
     container_name: hadoop-master
     network_mode: host
@@ -155,7 +166,10 @@ services:
       - hadoop_conf:/home/hadoop/hadoop/etc/hadoop
 
   jupyter:
-    image: quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3
+    image: shanks-jupyter:ml311
+    build:
+      context: ..
+      dockerfile: jupyter/Dockerfile.jupyter
     container_name: shanks-jupyter
     network_mode: host
     env_file: ../../.env
@@ -163,8 +177,8 @@ services:
       HADOOP_CONF_DIR: /etc/hadoop/conf
       YARN_CONF_DIR: /etc/hadoop/conf
       SPARK_CONF_DIR: /home/jovyan/spark-conf
-      PYSPARK_PYTHON: python3
-      PYSPARK_DRIVER_PYTHON: python3
+      PYSPARK_PYTHON: /opt/shanks-venv/bin/python
+      PYSPARK_DRIVER_PYTHON: /opt/conda/envs/shanks311/bin/python
       SPARK_LOCAL_IP: %s
     volumes:
       - hadoop_conf:/etc/hadoop/conf:ro
@@ -204,5 +218,13 @@ volumes:
   namenode_data:
   namenode_data_datanode:
   hadoop_conf:
-  notebooks:`, masterGPUConfig, namenode.IP)
+  notebooks:`, baseImage, masterGPUConfig, namenode.IP)
+}
+
+func mlImageConfig(gpu bool) (image, torchFlavor string) {
+	if gpu {
+		return "hadoop-base:ml311-cu126", "cu126"
+	}
+
+	return "hadoop-base:ml311-cpu", "cpu"
 }

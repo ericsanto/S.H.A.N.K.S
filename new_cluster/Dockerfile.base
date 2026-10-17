@@ -1,6 +1,40 @@
+FROM ubuntu:22.04 AS python-builder
+
+ARG PYTHON_VERSION=3.11.14
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        libssl-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        libreadline-dev \
+        libsqlite3-dev \
+        libffi-dev \
+        liblzma-dev \
+        libncursesw5-dev \
+        libgdbm-dev \
+        uuid-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp/python-build
+
+RUN curl --fail --show-error --location \
+        "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz" \
+        --output python.tgz && \
+    tar -xzf python.tgz --strip-components=1 && \
+    ./configure --prefix=/opt/python311 --with-ensurepip=install && \
+    make -j2 && \
+    make install
+
 FROM ubuntu:22.04
 
 LABEL maintainer="Eric Jesus"
+
+ARG TORCH_VERSION=2.9.1
+ARG TORCH_FLAVOR=cpu
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HADOOP_HOME=/home/hadoop/hadoop
@@ -17,8 +51,41 @@ RUN apt update && \
         rsync \
         net-tools \
         iputils-ping \
-        vim && \
+        vim \
+        ca-certificates \
+        libssl3 \
+        zlib1g \
+        libbz2-1.0 \
+        libreadline8 \
+        libsqlite3-0 \
+        libffi8 \
+        liblzma5 \
+        libncursesw6 \
+        libgdbm6 \
+        libgdbm-compat4 \
+        libuuid1 \
+        libstdc++6 \
+        libgomp1 && \
     rm -rf /var/lib/apt/lists/*
+
+COPY --from=python-builder /opt/python311 /opt/python311
+COPY ml/requirements-common.txt /tmp/shanks-requirements.txt
+
+RUN /opt/python311/bin/python3.11 -m venv /opt/shanks-venv && \
+    /opt/shanks-venv/bin/python -m pip install --no-cache-dir \
+        -r /tmp/shanks-requirements.txt && \
+    /opt/shanks-venv/bin/python -m pip install --no-cache-dir \
+        torch==${TORCH_VERSION} --index-url https://download.pytorch.org/whl/${TORCH_FLAVOR} && \
+    /opt/shanks-venv/bin/python -m pip check
+
+COPY ml/verify_environment.py /opt/shanks-venv/verify_environment.py
+
+RUN /opt/shanks-venv/bin/python /opt/shanks-venv/verify_environment.py \
+        --flavor=${TORCH_FLAVOR}
+
+ENV VIRTUAL_ENV=/opt/shanks-venv
+ENV PATH="/opt/shanks-venv/bin:${PATH}"
+ENV PYSPARK_PYTHON=/opt/shanks-venv/bin/python
 
 RUN useradd -m -s /bin/bash hadoop && \
     echo "hadoop:hadoop" | chpasswd && \
@@ -33,4 +100,3 @@ RUN wget https://dlcdn.apache.org/hadoop/common/hadoop-3.4.0/hadoop-3.4.0.tar.gz
     tar -xzf hadoop-3.4.0.tar.gz && \
     mv hadoop-3.4.0 hadoop && \
     rm -r  hadoop-3.4.0.tar.gz
-

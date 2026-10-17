@@ -113,8 +113,13 @@ func StartCluster(configCluster models.Config) error {
 	// O cache é essencial aqui: a imagem base baixa e expande vários gigabytes.
 	// Forçar --no-cache fazia toda tentativa reiniciar do zero após uma queda de
 	// rede e acumulava dezenas de gigabytes de camadas sem tag nos workers.
-	commandDockerBuildImageMaster := fmt.Sprintf("cd %s/S.H.A.N.K.S/new_cluster && docker build -t hadoop-base -f Dockerfile.base .", home)
-	commandDockerBuildWorkers := "cd $HOME/S.H.A.N.K.S/new_cluster && docker build -t hadoop-base -f Dockerfile.base ."
+	masterBaseImage, masterTorchFlavor := mlImageConfig(configCluster.Cluster.Namenode.GPU)
+	commandDockerBuildImageMaster := fmt.Sprintf(
+		"cd %s/S.H.A.N.K.S/new_cluster && docker build --build-arg TORCH_FLAVOR=%s -t %s -f Dockerfile.base .",
+		home,
+		masterTorchFlavor,
+		masterBaseImage,
+	)
 
 	privatePathSSHKey, err := getPathPrivateKey()
 	if err != nil {
@@ -122,7 +127,7 @@ func StartCluster(configCluster models.Config) error {
 	}
 
 	logInfo("Verificando a imagem hadoop-base na master...")
-	isImageBuilded := "docker images -q hadoop-base"
+	isImageBuilded := fmt.Sprintf("docker images -q %s", masterBaseImage)
 	out, err := exec.Command("bash", "-c", isImageBuilded).Output()
 
 	if err != nil {
@@ -148,6 +153,13 @@ func StartCluster(configCluster models.Config) error {
 	go startContainer(commandMaster, isImageBuildOK, errors, &wg)
 
 	for _, datanode := range configCluster.Cluster.Datanodes {
+		workerBaseImage, workerTorchFlavor := mlImageConfig(datanode.GPU)
+		workerImageBuildCommand := fmt.Sprintf(
+			"cd $HOME/S.H.A.N.K.S/new_cluster && docker build --build-arg TORCH_FLAVOR=%s -t %s -f Dockerfile.base .",
+			workerTorchFlavor,
+			workerBaseImage,
+		)
+		workerImageVerificationCommand := fmt.Sprintf("docker images -q %s", workerBaseImage)
 
 		imageVerified := make(chan imageVerificationResult, 1)
 		imageReady := make(chan bool, 1)
@@ -158,7 +170,7 @@ func StartCluster(configCluster models.Config) error {
 			errors,
 			imageVerified,
 			privatePathSSHKey,
-			isImageBuilded,
+			workerImageVerificationCommand,
 			&wg,
 		)
 
@@ -167,7 +179,7 @@ func StartCluster(configCluster models.Config) error {
 			*datanode,
 			imageVerified,
 			privatePathSSHKey,
-			commandDockerBuildWorkers,
+			workerImageBuildCommand,
 			errors,
 			&wg,
 			imageReady,

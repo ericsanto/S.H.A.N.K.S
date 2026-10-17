@@ -24,10 +24,10 @@ func PruneCluster(configCluster *models.Config) error {
 	}
 
 	commandDownContainersMaster := fmt.Sprintf("cd %s/S.H.A.N.K.S/new_cluster/master && docker compose -f docker-compose.master.yml down -v", home)
-	commandRemoveImagesMaster := "docker images -q master-master:latest | xargs -r docker rmi -f &&  docker images -q hadoop-base:latest | xargs -r docker rmi -f; docker images -q grafana/grafana:latest | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f; docker images -q prom/prometheus:latest | xargs -r docker rmi -f; docker images -q quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3 | xargs -r docker rmi -f"
+	commandRemoveImagesMaster := "docker images -q master-master:latest | xargs -r docker rmi -f && docker images -q hadoop-base:ml311-cpu | xargs -r docker rmi -f; docker images -q hadoop-base:ml311-cu126 | xargs -r docker rmi -f; docker images -q grafana/grafana:latest | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f; docker images -q prom/prometheus:latest | xargs -r docker rmi -f; docker images -q shanks-jupyter:ml311 | xargs -r docker rmi -f"
 
 	commandDownContainersWorker := "cd $HOME/S.H.A.N.K.S/new_cluster/worker && docker compose -f docker-compose.worker.yml down -v"
-	commandRemoveImagesWorker := "docker images -q worker-worker:latest | xargs -r docker rmi -f && docker images -q hadoop-base:latest | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f; docker images -q quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3 | xargs -r docker rmi -f"
+	commandRemoveImagesWorker := "docker images -q worker-worker:latest | xargs -r docker rmi -f && docker images -q hadoop-base:ml311-cpu | xargs -r docker rmi -f; docker images -q hadoop-base:ml311-cu126 | xargs -r docker rmi -f; docker images -q prom/node-exporter:latest | xargs -r docker rmi -f"
 
 	wg.Add(1)
 	go func() {

@@ -1,11 +1,13 @@
-FROM hadoop-base
+ARG SHANKS_BASE_IMAGE=hadoop-base:ml311-cpu
+
+FROM ${SHANKS_BASE_IMAGE}
 
 ARG SPARK_VERSION=3.5.3
 ARG SPARK_SHA512=3b041e538282c15ad3b0ab2f05d558e1be2d16e047c2a98ca9c08176c4a50e7101bd2199aec97a66fdabf4b3f490c2c1cefd547bbe35a1b3e3143e066948ee6d
 
 ENV SPARK_HOME=/home/hadoop/spark
 ENV PATH=${SPARK_HOME}/bin:${SPARK_HOME}/sbin:${PATH}
-ENV PYSPARK_PYTHON=python3
+ENV PYSPARK_PYTHON=/opt/shanks-venv/bin/python
 
 COPY /scripts /usr/local/bin
 COPY workers.txt .

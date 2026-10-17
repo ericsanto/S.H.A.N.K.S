@@ -4,6 +4,8 @@ services:
     build:
       context: ..
       dockerfile: master/Dockerfile.master
+      args:
+        SHANKS_BASE_IMAGE: hadoop-base:ml311-cu126
     hostname: master
     container_name: hadoop-master
     network_mode: host
@@ -23,7 +25,10 @@ services:
       - hadoop_conf:/home/hadoop/hadoop/etc/hadoop
 
   jupyter:
-    image: quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3
+    image: shanks-jupyter:ml311
+    build:
+      context: ..
+      dockerfile: jupyter/Dockerfile.jupyter
     container_name: shanks-jupyter
     network_mode: host
     env_file: ../../.env
@@ -31,8 +36,8 @@ services:
       HADOOP_CONF_DIR: /etc/hadoop/conf
       YARN_CONF_DIR: /etc/hadoop/conf
       SPARK_CONF_DIR: /home/jovyan/spark-conf
-      PYSPARK_PYTHON: python3
-      PYSPARK_DRIVER_PYTHON: python3
+      PYSPARK_PYTHON: /opt/shanks-venv/bin/python
+      PYSPARK_DRIVER_PYTHON: /opt/conda/envs/shanks311/bin/python
       SPARK_LOCAL_IP: 10.147.19.217
     volumes:
       - hadoop_conf:/etc/hadoop/conf:ro

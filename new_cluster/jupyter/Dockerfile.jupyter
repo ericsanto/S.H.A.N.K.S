@@ -1,0 +1,29 @@
+FROM quay.io/jupyter/pyspark-notebook:x86_64-spark-3.5.3
+
+ARG PYTHON_VERSION=3.11.14
+ARG TORCH_VERSION=2.9.1
+
+USER jovyan
+
+RUN mamba create --yes --name shanks311 --channel conda-forge \
+        python=${PYTHON_VERSION} pip ipykernel=6.30.1 && \
+    mamba clean --all --yes
+
+COPY --chown=jovyan:users ml/requirements-common.txt /tmp/shanks-requirements.txt
+
+RUN /opt/conda/envs/shanks311/bin/python -m pip install --no-cache-dir \
+        -r /tmp/shanks-requirements.txt && \
+    /opt/conda/envs/shanks311/bin/python -m pip install --no-cache-dir \
+        torch==${TORCH_VERSION} --index-url https://download.pytorch.org/whl/cpu && \
+    /opt/conda/envs/shanks311/bin/python -m pip check
+
+RUN /opt/conda/envs/shanks311/bin/python -m ipykernel install \
+        --prefix=/opt/conda --name python3 --display-name "SHANKS - Python 3.11" && \
+    /opt/conda/envs/shanks311/bin/python -m ipykernel install \
+        --prefix=/opt/conda --name shanks311 --display-name "SHANKS ML - Python 3.11"
+
+COPY --chown=jovyan:users ml/verify_environment.py /opt/conda/envs/shanks311/verify_environment.py
+COPY --chown=jovyan:users jupyter/SHANKS_duas_GPUs_Jupyter.ipynb /opt/shanks/notebooks/SHANKS_duas_GPUs_Jupyter.ipynb
+
+RUN /opt/conda/envs/shanks311/bin/python \
+        /opt/conda/envs/shanks311/verify_environment.py

@@ -3,6 +3,8 @@ services:
     build: 
       context: ..
       dockerfile: worker/Dockerfile.worker
+      args:
+        SHANKS_BASE_IMAGE: hadoop-base:ml311-cu126
     container_name: datanode2
     env_file: ../../.env
     network_mode: "host"
