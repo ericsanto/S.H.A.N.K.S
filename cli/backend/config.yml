@@ -5,9 +5,15 @@ cluster:
   namenode:
     - name: master
     - ip: 10.1.1.1
+    - yarn_limit: 4G
+    - spark_limit: 4G
 
   workers:
     - nome: "node-worker-1"
       ip_zerotier: "10.147.20.2"
+      yarn_limit: 4G
+      spark_limit: 4G
     - nome: "node-worker-2"
       ip_zerotier: "10.147.20.3"
+      yarn_limit: 4G
+      spark_limit: 4G

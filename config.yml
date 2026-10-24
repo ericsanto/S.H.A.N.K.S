@@ -1,11 +1,21 @@
 cluster: 
   namenode:
-    user: "ericsantos"
+    user: "eric"
     name: "master"
-    ip: "10.144.169.201"
+    ip: "10.147.19.217"
+    yarn_limit: "6"
+    cpu: "4"
+    gpu: true
 
   datanodes:
-    - user: "eric-santos"
-      name: "master"
-      ip: "10.144.17.173"
-
+  - user: "ericsantos"
+    name: "datanode15"
+    ip: "10.147.19.110" # NotebookQD
+    yarn_limit: "8"
+    cpu: "8"
+    gpu: true
+  - user: "eric-santos"
+    name: "datanode16"
+    ip: "10.147.19.158" # NotebookEric
+    yarn_limit: "2"
+    cpu: "4"

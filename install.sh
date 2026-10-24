@@ -1,0 +1,74 @@
+#!/bin/bash
+
+
+source docker-configure.sh
+source zerotier-configure.sh
+
+
+source /etc/os-release
+
+case "$ID" in
+    garuda|arch|manjaro)
+        pacman -Syu --noconfirm
+        ;;
+    ubuntu|debian|raspbian)
+        apt-get update && apt-get upgrade -y
+        ;;
+    rhel)
+        dnf upgrade -y
+        ;;
+    *)
+        echo "Distribuição não suportada: $ID"
+        exit 1
+        ;;
+esac
+
+bin_directory="/usr/local/bin"
+
+GROUP_NAME="shanks"
+
+if getent group $GROUP_NAME > /dev/null 2>&1 ; then
+    echo "Grupo shanks já existe"
+else
+    echo "Criando gupo $GROUP_NAME"
+
+    groupadd $GROUP_NAME
+    usermod -a -G $GROUP_NAME $SUDO_USER
+
+    echo "Grupo $GROUP_NAME" criado com sucesso
+fi
+
+curl  https://raw.githubusercontent.com/ericsanto/S.H.A.N.K.S/staging/config-shanks-hosts.sh  -o config-hosts-shanks.sh && \
+chmod +x config-hosts-shanks.sh && \
+mv config-hosts-shanks.sh $bin_directory
+
+chown -R root:root /usr/local/bin/config-hosts-shanks.sh
+
+curl  https://raw.githubusercontent.com/ericsanto/S.H.A.N.K.S/staging/remove-config-hosts.sh  -o remove-config-hosts.sh && \
+chmod +x remove-config-hosts.sh && \
+mv remove-config-hosts.sh $bin_directory
+
+chown -R root:root /usr/local/bin/remove-config-hosts.sh
+
+### DOWNLAOD ZEROTIER ###
+install_zerotier
+
+SUDOERS_TEMP=$(mktemp)
+
+printf '%s\n' \
+    '%shanks ALL=(root) NOPASSWD: /usr/local/bin/config-hosts-shanks.sh, /usr/local/bin/remove-config-hosts.sh' \
+    > "$SUDOERS_TEMP"
+
+chmod 0440 "$SUDOERS_TEMP"
+
+if visudo -cf "$SUDOERS_TEMP"; then
+    install -o root -g root -m 0440 "$SUDOERS_TEMP" /etc/sudoers.d/shanks
+else
+    echo "Erro: regra sudoers inválida."
+    rm -f "$SUDOERS_TEMP"
+    exit 1
+fi
+
+rm -f "$SUDOERS_TEMP"
+
+install_docker_based_arch

@@ -1,13 +1,16 @@
-FROM hadoop-base
+ARG SHANKS_BASE_IMAGE=hadoop-base:ml311-cpu
+
+FROM ${SHANKS_BASE_IMAGE}
 
 COPY  /scripts /usr/local/bin
-COPY workers.txt .
-COPY workers.txt .
 COPY jmx /opt/jmx
 
 USER root
 
-RUN chmod +x /usr/local/bin/master-entrypoint.sh
+RUN chmod +x /usr/local/bin/master-entrypoint.sh && \
+    mkdir -p /home/hadoop/hadoop/hdfs/namenode \
+             /home/hadoop/hadoop/hdfs/datanode && \
+    chown -R hadoop:hadoop /home/hadoop/hadoop/hdfs
 
 USER hadoop
 

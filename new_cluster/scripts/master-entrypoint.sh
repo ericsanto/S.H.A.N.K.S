@@ -8,20 +8,27 @@ source cluster-config.sh
 
 source yarn-env.sh
 
-source config-ssh.sh
 
-mkdir -p $HOME/hdfs/namenode
+mkdir -p $HADOOP_HOME/hdfs/namenode
 
-if [ ! -d $HOME/hdfs/namenode/current ]; then
+
+if [ ! -d $HADOOP_HOME/hdfs/namenode/current ]; then
 
     hdfs namenode -format
 fi
 
+mkdir -p $HADOOP_HOME/hdfs/datanode
 
-# service ssh start
+echo "Iniciando NameNode..."
+hdfs --daemon start namenode
 
-# start-dfs.sh
+echo "Iniciando ResourceManager..."
+yarn --daemon start resourcemanager
 
-start-yarn.sh
+echo "Iniciando NodeManager..."
+yarn --daemon start nodemanager
+
+echo "Iniciando datanode"
+hdfs --daemon start datanode
 
 tail -f /dev/null
