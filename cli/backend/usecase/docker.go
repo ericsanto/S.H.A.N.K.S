@@ -3,8 +3,10 @@ package usecase
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
+	"github.com/ericsanto/S.H.A.N.K.S/cli/backend/enum"
 	"github.com/ericsanto/S.H.A.N.K.S/cli/backend/models"
 )
 
@@ -17,7 +19,7 @@ func CreateDockerfile(config models.Cluster) error {
 	go func() {
 		defer wg.Done()
 
-		dockerComposeFileMaster := createMasterCompose(config.Namenode)
+		dockerComposeFileMaster := createMasterCompose(config)
 
 		if err := os.WriteFile("new_cluster/master/docker-compose.master.yml", []byte(dockerComposeFileMaster), 0644); err != nil {
 			chanErrors <- err
@@ -132,10 +134,10 @@ volumes:
 	return nil
 }
 
-func createMasterCompose(namenode models.Namenode) string {
-	baseImage, _ := mlImageConfig(namenode.GPU)
+func createMasterCompose(config models.Cluster) string {
+	baseImage, _ := mlImageConfig(config.Namenode.GPU)
 	masterGPUConfig := ""
-	if namenode.GPU {
+	if config.Namenode.GPU {
 		masterGPUConfig = `    environment:
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
     deploy:
@@ -146,6 +148,28 @@ func createMasterCompose(namenode models.Namenode) string {
               count: 1
               capabilities: [gpu]
 `
+	}
+
+	var tableFormat string
+
+	if config.Lakehouse.Enabled {
+
+		if strings.ToLower(config.Lakehouse.TableFormat) == enum.Iceberg.String() {
+			tableFormat = `  spark-iceberg:
+    image: tabulario/spark-iceberg:3.5.5_1.8.1
+    container_name: spark-iceberg
+    network_mode: host
+    depends_on:
+      - jupyter
+    volumes:
+      - ./warehouse:/home/iceberg/warehouse
+      - ./notebooks:/home/iceberg/notebooks/notebooks
+    ports:
+      - 8889:8888
+      - 9050:8080
+      - 10000:10000
+      - 10001:10001`
+		}
 	}
 
 	return fmt.Sprintf(`
@@ -213,12 +237,14 @@ services:
     container_name: exporter-master
     network_mode: service:master
 
+%s
+
 volumes:
   grafana:
   namenode_data:
   namenode_data_datanode:
   hadoop_conf:
-  notebooks:`, baseImage, masterGPUConfig, namenode.IP)
+  notebooks:`, baseImage, masterGPUConfig, config.Namenode.IP, tableFormat)
 }
 
 func mlImageConfig(gpu bool) (image, torchFlavor string) {
